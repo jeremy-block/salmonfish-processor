@@ -1,0 +1,1 @@
+This Folder contains the data used in the analysis of the salmonfish project. These files are all duplicates of their originals.
