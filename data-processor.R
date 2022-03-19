@@ -220,10 +220,10 @@ saveVis("independence-box.pdf", h = 4, writeToDisk = F)
 
 #running Anova
 model <- df.Participants %>%
-  lm(independence ~ Condition, data = .)
+  aov(independence ~ Condition, data = .)
 summary(model)
 anova(model)
-# # see an effect:
+# # see an omnibus effect:
 #        Df Sum Sq Mean Sq F value Pr(>F)  
 # Condition    2 0.3082 0.15408   4.274 0.0224 *
 # Residuals   33 1.1896 0.03605      
@@ -236,6 +236,8 @@ gqtest(model, order.by = ~Condition, data=df.Participants, fraction = 0)
 # GQ = 1.986, df1 = 15, df2 = 15, p-value = 0.09775
 #close, but Not significantly different from homoscedastic. so we can work with the significant result.
 
+TukeyHSD(model, conf.level=.95) 
+plot (TukeyHSD(model, conf.level=.95) )
 
 ##### Filtering Linechart ####
 
