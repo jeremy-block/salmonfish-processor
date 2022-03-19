@@ -65,6 +65,31 @@ df.Participants <- read_csv("data/extracted.csv") %>%
   mutate(searchRatio = `searchCount-Gross`/grossFilter)
 summary(df.Participants)
 
+#getting values for table 1 in paper
+df.Participants %>%
+  filter(Condition == "Control") %>%
+  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
+  summary
+df.Participants %>%
+  filter(Condition == "Coverage") %>%
+  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
+  summary
+df.Participants %>%
+  filter(Condition == "History") %>%
+  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
+  summary
+# Starting to make a faceted, visual version of Table 1
+#todo: assign appropriate colors to conditions and update variables names.
+#todo: make scales better
+df.Participants %>%
+  select(Condition,grossDocCount,grossFilter,interactionRate,overlapWA,independence) %>%
+  melt() %>%
+  ggplot(aes(y=Condition, x=value))+
+  geom_boxplot(aes(fill=variable)) +
+  facet_wrap(~variable, scales = "free", ncol=1) + 
+  labs(x=NULL, y=NULL)+
+  theme(legend.position="none")
+
 ##### Conclusion Conf. ####
 df.Confidence <- read_csv("data/confidence.csv") %>%
   melt %>%
@@ -81,6 +106,39 @@ df.Strategies <- read_csv(file = "data/Participants-Use for Analysis.csv") %>%
   group_by(Cond, strategy)
   # summarise(counts = n())
 summary(df.Strategies)
+
+#getting values for table 2 in paper
+df.InteractionStrategies <- merge(df.Participants,df.Strategies,by="userID")
+df.InteractionStrategies%>%
+  filter(strategy == "Keyword Browsing") %>%
+  select(grossDocCount,grossFilter,overlapWA,independence)%>%
+  summary
+df.InteractionStrategies%>%
+  filter(strategy == "Random Access") %>%
+  select(grossDocCount,grossFilter,overlapWA,independence)%>%
+  summary
+
+df.InteractionStrategies%>%
+  filter(strategy == "Reviewing Origin") %>%
+  select(grossDocCount,grossFilter,overlapWA,independence)%>%
+  summary
+
+df.InteractionStrategies%>%
+  filter(strategy == "Starting over") %>%
+  select(grossDocCount,grossFilter,overlapWA,independence)%>%
+  summary
+
+# Starting to make a faceted, visual version of Table 2
+#todo: assign appropriate colors to conditions and update variables names.
+#todo: make scales better
+df.InteractionStrategies %>%
+  select(strategy,grossDocCount,grossFilter,interactionRate,overlapWA,independence) %>%
+  melt() %>%
+  ggplot(aes(y=strategy, x=value))+
+  geom_boxplot(aes(fill=variable)) +
+  facet_wrap(~variable, scales = "free", ncol=1) + 
+  labs(x=NULL, y=NULL)+
+  theme(legend.position="none")
 
 ##### Filtering events as Percent completion Line chart ####
 df.Filtering <- read_csv("data/100_affSearch_sum_rel.csv") %>% #can pull form this dataset since it's both searches and affiliation events
