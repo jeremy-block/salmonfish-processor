@@ -56,6 +56,12 @@ names(my_two_colors) <- levels(c("Coverage","History")) # Extract all levels of 
 my_two_edge_colors <- scale_colour_manual(  name = "Condition", values = my_two_colors)
 my_two_fill_colors <- scale_fill_manual(  name = "Condition", values = my_two_colors)
 
+#Color def for strategy visualizations where we have 4 groups
+my_strat_colors <- c("#fb8072","#8dd3c7","#ffffb3", "#bebada")
+names(my_strat_colors) <- levels(c("Starting over","Reviewing Origin","Random Access", "Keyword Browsing"))
+my_strat_edge_colors <- scale_colour_manual(  name ="strategy", values = my_strat_colors)
+my_strat_fill_colors <- scale_fill_manual(  name =  "strategy", values = my_strat_colors)
+
 #### Import Data ##########
 # Import Data form interaction logs
 df.Participants <- read_csv("data/extracted.csv") %>%
@@ -78,17 +84,32 @@ df.Participants %>%
   filter(Condition == "History") %>%
   select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
   summary
-# Starting to make a faceted, visual version of Table 1
-#todo: assign appropriate colors to conditions and update variables names.
-#todo: make scales better
+
+# visual version of Table 1 showing interaction log features by condition
+#todo: make scales better?
 df.Participants %>%
   select(Condition,grossDocCount,grossFilter,interactionRate,overlapWA,independence) %>%
+  rename(`Document Opens` = "grossDocCount") %>%
+  rename(`Filtering Events` = grossFilter) %>%
+  rename(`Interaction Rate (interactions/sec)` = "interactionRate")%>%
+  rename(`Overlap Ratio` = overlapWA) %>%
+  rename(`Independence Ratio` = independence) %>%
   melt() %>%
   ggplot(aes(y=Condition, x=value))+
-  geom_boxplot(aes(fill=variable)) +
+  geom_boxplot(aes(fill=Condition)) +
+  # geom_signif(comparisons = list(
+  #   c("Control", "Coverage"),
+  #   c("Control","History"),
+  #   c("Coverage","History")),
+  #   test = "wilcox.test",
+  #   step_increase = 0.1,
+  #   map_signif_level=c("***"=0.001,"**"=0.01, "*"=0.05, " "=2)
+  # )+
   facet_wrap(~variable, scales = "free", ncol=1) + 
+  my_fill_colors+
   labs(x=NULL, y=NULL)+
   theme(legend.position="none")
+saveVis("interactions-conditions.pdf", w=4,h=5, writeToDisk = F)
 
 ##### Conclusion Conf. ####
 df.Confidence <- read_csv("data/confidence.csv") %>%
@@ -111,34 +132,52 @@ summary(df.Strategies)
 df.InteractionStrategies <- merge(df.Participants,df.Strategies,by="userID")
 df.InteractionStrategies%>%
   filter(strategy == "Keyword Browsing") %>%
-  select(grossDocCount,grossFilter,overlapWA,independence)%>%
+  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
   summary
 df.InteractionStrategies%>%
   filter(strategy == "Random Access") %>%
-  select(grossDocCount,grossFilter,overlapWA,independence)%>%
+  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
   summary
 
 df.InteractionStrategies%>%
   filter(strategy == "Reviewing Origin") %>%
-  select(grossDocCount,grossFilter,overlapWA,independence)%>%
+  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
   summary
 
 df.InteractionStrategies%>%
   filter(strategy == "Starting over") %>%
-  select(grossDocCount,grossFilter,overlapWA,independence)%>%
+  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
   summary
 
-# Starting to make a faceted, visual version of Table 2
-#todo: assign appropriate colors to conditions and update variables names.
+# Made a visual version of Table 2
 #todo: make scales better
+#todo: remove significant lines for things that are not significant.
 df.InteractionStrategies %>%
   select(strategy,grossDocCount,grossFilter,interactionRate,overlapWA,independence) %>%
+  rename(`Document Opens` = grossDocCount) %>%
+  rename(`Filtering Events` = grossFilter) %>%
+  rename(`Interaction Rate (interactions/sec)` = interactionRate)%>%
+  rename(`Overlap Ratio` = overlapWA) %>%
+  rename(`Independence Ratio` = independence) %>%
   melt() %>%
   ggplot(aes(y=strategy, x=value))+
-  geom_boxplot(aes(fill=variable)) +
+  geom_boxplot(aes(fill=strategy)) +
+  geom_signif(comparisons = list(
+      c("Starting over", "Reviewing Origin"),
+      # c("Starting over","Random Access"),
+      # c("Starting over","Keyword Browsing"),
+      c("Reviewing Origin","Random Access"),
+      c("Reviewing Origin","Keyword Browsing"),
+      c("Random Access", "Keyword Browsing")),
+      test = "wilcox.test",
+      step_increase = 0.1,
+      map_signif_level=c("***"=0.001,"**"=0.01, "*"=0.05, " "=2)
+  )+
+  my_strat_fill_colors +
   facet_wrap(~variable, scales = "free", ncol=1) + 
   labs(x=NULL, y=NULL)+
   theme(legend.position="none")
+saveVis("interactions-strategies.pdf",w=4,h=5,writeToDisk = T)
 
 ##### Filtering events as Percent completion Line chart ####
 df.Filtering <- read_csv("data/100_affSearch_sum_rel.csv") %>% #can pull form this dataset since it's both searches and affiliation events
