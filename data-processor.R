@@ -1,6 +1,6 @@
 #### Preamble:  Setup & import libraries ####
 if(!require("pacman")) install.packages("packman")
-pacman::p_load(pacman,tidyverse,tsibble,ggplot2,reshape2,tidylog,hms,lmtest,ggsignif)
+pacman::p_load(pacman,tidyverse,tsibble,ggplot2,reshape2,tidylog,hms,lmtest,ggsignif,ggpubr,rstatix,FSA)
 ##YOU NEED TO UPDATE THIS WITH THE PATH TO THE PARENT FOLDER CONTAINING THIS SCRIPT
 setwd("~/Desktop/dataprocessor") 
 
@@ -63,13 +63,161 @@ my_strat_edge_colors <- scale_colour_manual(  name ="strategy", values = my_stra
 my_strat_fill_colors <- scale_fill_manual(  name =  "strategy", values = my_strat_colors)
 
 #### Import Data ##########
-# Import Data form interaction logs
-df.Participants <- read_csv("data/extracted.csv") %>%
+##### Conclusion Conf. ####
+df.Confidence <- read_csv("data/confidence.csv") %>%
+  melt %>%
+  rename(Condition = variable) %>%
+  rename(Count = value) %>%
   mutate(Condition = as.factor(Condition)) %>%
+  mutate(Confidence = as.factor(Confidence))
+summary(df.Confidence)
+
+##### Import Data from interaction logs #####
+df.Participants <- read_csv("data/extracted.csv") %>%
+    mutate(Condition = as.factor(Condition)) %>%
   mutate(Condition = recode_factor(Condition, `1`="Control",`2`='Coverage',`4`='History'))%>%
   mutate(grossFilter = `searchCount-Gross` + `AffiliationEvents-Gross`) %>%
   mutate(searchRatio = `searchCount-Gross`/grossFilter)
 summary(df.Participants)
+
+######Testing factors######
+#grossFilter
+  #Produce Boxplots and visually check for outliers
+  ggplot(df.Participants, aes(x = Condition, y = grossFilter, fill = Condition)) +
+    stat_boxplot(geom ="errorbar", width = 0.5) +
+    geom_boxplot(fill = "light blue") + 
+    stat_summary(fun=mean, geom="point", shape=10, size=3.5, color="black") + 
+    ggtitle("Boxplot of gross filtering") +
+    theme_bw() + theme(legend.position="none")
+  
+  #Test each group for normality
+  normality <- df.Participants %>%
+    group_by(Condition) %>%
+    summarise(W = shapiro.test(grossFilter)$statistic,
+              p.value = shapiro.test(grossFilter)$p.value)
+  print(normality)
+  # 1 Control   0.937   0.465
+  # 2 Coverage  0.959   0.775
+  # 3 History   0.963   0.829
+  
+  #Perform QQ plots by group
+  ggplot(data = df.Participants, mapping = aes(sample = grossFilter, color = Condition, fill = Condition)) +
+    stat_qq()+
+    facet_wrap(~ Condition, scales = "free") +
+    labs(x = "Theoretical Quantiles", y = "Sample Quantiles") + theme_bw() 
+  
+  #Perform the Kruskal-Wallis test
+  m1<-kruskal.test(grossFilter ~ Condition, data=df.Participants)
+  print(m1)
+  # Kruskal-Wallis chi-squared = 4.2713, df = 2, p-value = 0.1182
+  
+  #Dunn's Kruskal-Wallis post-hoc test
+  posthocs1<-dunnTest(grossFilter ~ Condition, data=df.Participants, method="bonferroni")
+  print(posthocs1)
+
+  # Normal enough, but Not significant at all
+
+#interactionRate
+  #Produce Boxplots and visually check for outliers
+  ggplot(df.Participants, aes(x = Condition, y = interactionRate, fill = Condition)) +
+    stat_boxplot(geom ="errorbar", width = 0.5) +
+    geom_boxplot(fill = "light blue") + 
+    stat_summary(fun=mean, geom="point", shape=10, size=3.5, color="black") + 
+    ggtitle("Boxplot of gross filtering") +
+    theme_bw() + theme(legend.position="none")
+  
+  #Test each group for normality
+  normality <- df.Participants %>%
+    group_by(Condition) %>%
+    summarise(W = shapiro.test(interactionRate)$statistic,
+              p.value = shapiro.test(interactionRate)$p.value)
+  print(normality)
+  # 1 Control   0.687 0.000634 *** Not Normal
+  # 2 Coverage  0.954 0.691   
+  # 3 History   0.978 0.976   
+  
+  #Perform QQ plots by group
+  ggplot(data = df.Participants, mapping = aes(sample = interactionRate, color = Condition, fill = Condition)) +
+    stat_qq()+
+    facet_wrap(~ Condition, scales = "free") +
+    labs(x = "Theoretical Quantiles", y = "Sample Quantiles") + theme_bw() 
+  
+  #Perform the Kruskal-Wallis test
+  m1<-kruskal.test(interactionRate ~ Condition, data=df.Participants)
+  print(m1)
+  # Kruskal-Wallis chi-squared = 1.2297, df = 2, p-value = 0.5407
+
+#overlapWA
+  #Produce Boxplots and visually check for outliers
+  ggplot(df.Participants, aes(x = Condition, y = overlapWA, fill = Condition)) +
+    stat_boxplot(geom ="errorbar", width = 0.5) +
+    geom_boxplot(fill = "light blue") + 
+    stat_summary(fun=mean, geom="point", shape=10, size=3.5, color="black") + 
+    ggtitle("Boxplot of gross filtering") +
+    theme_bw() + theme(legend.position="none")
+  
+  #Test each group for normality
+  normality <- df.Participants %>%
+    group_by(Condition) %>%
+    summarise(W = shapiro.test(overlapWA)$statistic,
+              p.value = shapiro.test(overlapWA)$p.value)
+  print(normality)
+  # 1 Control   0.905   0.186
+  # 2 Coverage  0.921   0.293
+  # 3 History   0.887   0.107  
+  
+  #Perform QQ plots by group
+  ggplot(data = df.Participants, mapping = aes(sample = overlapWA, color = Condition, fill = Condition)) +
+    stat_qq()+
+    facet_wrap(~ Condition, scales = "free") +
+    labs(x = "Theoretical Quantiles", y = "Sample Quantiles") + theme_bw() 
+  
+  #Perform the Kruskal-Wallis test
+  m1<-kruskal.test(overlapWA ~ Condition, data=df.Participants)
+  print(m1)
+  # Kruskal-Wallis chi-squared = 0.80596, df = 2, p-value = 0.6683
+
+#independence
+  #Produce Boxplots and visually check for outliers
+  ggplot(df.Participants, aes(x = Condition, y = independence, fill = Condition)) +
+    stat_boxplot(geom ="errorbar", width = 0.5) +
+    geom_boxplot(fill = "light blue") + 
+    stat_summary(fun=mean, geom="point", shape=10, size=3.5, color="black") + 
+    ggtitle("Boxplot of gross filtering") +
+    theme_bw() + theme(legend.position="none")
+  
+  #Test each group for normality
+  normality <- df.Participants %>%
+    group_by(Condition) %>%
+    summarise(W = shapiro.test(independence)$statistic,
+              p.value = shapiro.test(independence)$p.value)
+  print(normality)
+  # 1 Control   0.851  0.0374 * not normally distributed - has an outlier.
+  # 2 Coverage  0.938  0.468 
+  # 3 History   0.911  0.222   
+  
+  #Perform QQ plots by group
+  ggplot(data = df.Participants, mapping = aes(sample = independence, color = Condition, fill = Condition)) +
+    stat_qq()+
+    facet_wrap(~ Condition, scales = "free") +
+    labs(x = "Theoretical Quantiles", y = "Sample Quantiles") + theme_bw() 
+  
+  #Perform the Kruskal-Wallis test
+  m1<-kruskal.test(independence ~ Condition, data=df.Participants)
+  print(m1)
+  # Kruskal-Wallis chi-squared = 7.0061, df = 2, p-value = 0.03011
+
+  #Dunn's Kruskal-Wallis post-hoc test
+  posthocs1<-dunnTest(independence ~ Condition, data=df.Participants, method="bonferroni")
+  print(posthocs1)
+    #         Comparison         Z     P.unadj      P.adj
+  # 1 Control - Coverage 0.9592282 0.337443789 0.33744379
+  # 2  Control - History 2.6160770 0.008894651 0.02668395
+  # 3 Coverage - History 1.6568487 0.097550061 0.19510012
+
+#  Alternative post-hoc test for independence factor shows almost the same adjusted p.values  but at less sig.digs.
+# pairwise.wilcox.test(df.Participants$independence, df.Participants$Condition,
+#                      p.adjust.method = "bonferroni")
 
 #getting values for table 1 in paper
 df.Participants %>%
@@ -88,8 +236,7 @@ df.Participants %>%
 # visual version of Table 1 showing interaction log features by condition
 #todo: make scales better?
 df.Participants %>%
-  select(Condition,grossDocCount,grossFilter,interactionRate,overlapWA,independence) %>%
-  rename(`Document Opens` = "grossDocCount") %>%
+  select(Condition,grossFilter,interactionRate,overlapWA,independence) %>%
   rename(`Filtering Events` = grossFilter) %>%
   rename(`Interaction Rate (interactions/sec)` = "interactionRate")%>%
   rename(`Overlap Ratio` = overlapWA) %>%
@@ -109,21 +256,19 @@ df.Participants %>%
   my_fill_colors+
   labs(x=NULL, y=NULL)+
   theme(legend.position="none")
-saveVis("interactions-conditions.pdf", w=4,h=5, writeToDisk = F)
+saveVis("interactions-conditions.pdf", w=4,h=4, writeToDisk = F)
 
-##### Conclusion Conf. ####
-df.Confidence <- read_csv("data/confidence.csv") %>%
-  melt %>%
-  rename(Conditions = variable) %>%
-  rename(Count = value)
-summary(df.Confidence)
+
 
 ##### Zhao Strategies #####
 df.Strategies <- read_csv(file = "data/Participants-Use for Analysis.csv") %>%
-  select(userID, Cond, strategy_zhao3) %>%
+  select(userID, Cond, strategy_zhao3,conclusionConf) %>%
   mutate(Cond = as.factor(Cond)) %>%
   mutate(Cond = recode_factor(.x = Cond, `1`="Control",`2`='Coverage',`4`='History')) %>%
   mutate(strategy = as.factor(strategy_zhao3)) %>%
+  mutate(strategy = recode_factor(.x = strategy, `Starting over`="Starting Over")) %>%
+  select(-strategy_zhao3) %>%
+  mutate(conclusionConf = as.factor(conclusionConf)) %>%
   group_by(Cond, strategy)
   # summarise(counts = n())
 summary(df.Strategies)
@@ -132,29 +277,28 @@ summary(df.Strategies)
 df.InteractionStrategies <- merge(df.Participants,df.Strategies,by="userID")
 df.InteractionStrategies%>%
   filter(strategy == "Keyword Browsing") %>%
-  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
+  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence,conclusionConf)%>%
   summary
 df.InteractionStrategies%>%
   filter(strategy == "Random Access") %>%
-  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
+  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence,conclusionConf)%>%
   summary
 
 df.InteractionStrategies%>%
   filter(strategy == "Reviewing Origin") %>%
-  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
+  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence,conclusionConf)%>%
   summary
 
 df.InteractionStrategies%>%
-  filter(strategy == "Starting over") %>%
-  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence)%>%
+  filter(strategy == "Starting Over") %>%
+  select(grossDocCount,grossFilter,interactionRate,overlapWA,independence,conclusionConf)%>%
   summary
 
 # Made a visual version of Table 2
 #todo: make scales better
 #todo: remove significant lines for things that are not significant.
 df.InteractionStrategies %>%
-  select(strategy,grossDocCount,grossFilter,interactionRate,overlapWA,independence) %>%
-  rename(`Document Opens` = grossDocCount) %>%
+  select(strategy,grossFilter,interactionRate,overlapWA,independence) %>%
   rename(`Filtering Events` = grossFilter) %>%
   rename(`Interaction Rate (interactions/sec)` = interactionRate)%>%
   rename(`Overlap Ratio` = overlapWA) %>%
@@ -162,22 +306,22 @@ df.InteractionStrategies %>%
   melt() %>%
   ggplot(aes(y=strategy, x=value))+
   geom_boxplot(aes(fill=strategy)) +
-  geom_signif(comparisons = list(
-      c("Starting over", "Reviewing Origin"),
-      # c("Starting over","Random Access"),
-      # c("Starting over","Keyword Browsing"),
-      c("Reviewing Origin","Random Access"),
-      c("Reviewing Origin","Keyword Browsing"),
-      c("Random Access", "Keyword Browsing")),
-      test = "wilcox.test",
-      step_increase = 0.1,
-      map_signif_level=c("***"=0.001,"**"=0.01, "*"=0.05, " "=2)
-  )+
+  # geom_signif(comparisons = list(
+  #     c("Starting over", "Reviewing Origin"),
+  #     # c("Starting over","Random Access"),
+  #     # c("Starting over","Keyword Browsing"),
+  #     c("Reviewing Origin","Random Access"),
+  #     c("Reviewing Origin","Keyword Browsing"),
+  #     c("Random Access", "Keyword Browsing")),
+  #     test = "wilcox.test",
+  #     step_increase = 0.1,
+  #     map_signif_level=c("***"=0.001,"**"=0.01, "*"=0.05, " "=2)
+  # )+
   my_strat_fill_colors +
   facet_wrap(~variable, scales = "free", ncol=1) + 
   labs(x=NULL, y=NULL)+
   theme(legend.position="none")
-saveVis("interactions-strategies.pdf",w=4,h=5,writeToDisk = T)
+saveVis("interactions-strategies.pdf",w=4,h=4,writeToDisk = F)
 
 ##### Filtering events as Percent completion Line chart ####
 df.Filtering <- read_csv("data/100_affSearch_sum_rel.csv") %>% #can pull form this dataset since it's both searches and affiliation events
@@ -204,14 +348,14 @@ summary(df.Filtering)
 
 ##### Conclusion Conf. ####
 df.Confidence %>%
-  ggplot(data=., aes(x=Confidence,y=Count,fill=Conditions))+
+  ggplot(data=., aes(x=Confidence,y=Count,fill=Condition))+
   my_fill_colors +
   geom_bar(position="dodge", stat="identity", col="#353535")+
   geom_text(aes(label = Count), position = position_dodge(0.9), vjust = 1.5, colour = "black")+
   # ylim(0,12)+
   scale_y_continuous(breaks= c(3,6,9,12))+
   labs(
-    title = "Confidience in Conclusion by Condition",
+    title = "Confidence in Conclusion by Condition",
     x = "Confidence",
     x = NULL,
     y="Number of participants"
@@ -221,42 +365,42 @@ df.Confidence %>%
 saveVis("conclusion-conf.pdf",h = 3, writeToDisk = F)
 
 
-
-
-df.Confidence %>%
-  aov(data = ., Count ~ Conditions + Confidence) %>%
-  summary()
-# No significant difference between conditions or confidence.
-#             Df Sum Sq Mean Sq F value Pr(>F)
-# Conditions   2   0.00   0.000   0.000  1.000
-# Confidence   1   2.67   2.667   0.129  0.754
-# Residuals    2  41.33  20.667 
-
 # doing this manually cause I can't figure out how to do it otherwise
-#run a fisher test
-matrix(c(3,4,9,9,8,3), ncol = 2, nrow = 3) %>%
+#run an omnibus fisher test
+TBL <- rbind(c(3,4,9),c(9,8,3))
+# matrix(c(3,4,9,9,8,3), ncol = 2, nrow = 3) %>%
   # view() #just to check the shape
-  fisher.test(.)
+  fisher.test(TBL)
 # p-value = 0.03908 - Significant Difference in conclusion confidence by conditions
 # alternative hypothesis: two.sided
+  chisq.test(TBL, sim=T)
+# Pearson's Chi-squared test with simulated p-value looks similar
+# data:  TBL
+# X-squared = 6.975, df = NA, p-value = 0.04598
 
 # Post Hoc tests - Control vs Coverage 
 matrix(c(3,4,9,8), ncol = 2, nrow = 2) %>%
-  # view()
   fisher.test(.)
-# p-value = 1 - can not detect difference in Control Confidence vs Coverage confidence
+# p-value = 1 - can not detect difference in Control confidence vs Coverage confidence
 # alternative hypothesis: true odds ratio is not equal to 1
 # 95 percent confidence interval:  0.07478974 5.44837199
 # sample estimates: odds ratio   0.6780693 
 
+#Control vs History
 matrix(c(3,9,9,3), ncol = 2, nrow = 2) %>%
-  # view()
   fisher.test(.)
-# p-value = 0.03913 - This is low, but not lower then the Bonferroni corrected p value (0.05/2 = 0.025) to be significant.
+# p-value = 0.03913 - This is low, but not lower then the Bonferroni corrected p value (0.05/3 = 0.0166) to be significant.
 # alternative hypothesis: true odds ratio is not equal to 1
 # 95 percent confidence interval:  0.01182317 0.92218820
 # sample estimates: odds ratio   0.1241874 
 
+#Coverage vs History
+matrix(c(4,9,8,3), ncol = 2, nrow = 2) %>%
+  fisher.test(.)
+# p-value = 0.09953 This is low, but not lower then the Bonferroni corrected p value (0.05/3 = 0.0166) to be significant.
+# alternative hypothesis: true odds ratio is not equal to 1
+# 95 percent confidence interval:  0.01926453 1.27807212
+# sample estimates:  odds ratio 0.1814096
 
 
 
@@ -410,6 +554,52 @@ ggplot(data = ., mapping = aes(x=time2, y=value, color= cond)) +
     legend.background = element_rect(fill = "white"),
   )
 saveVis("filtering-over-time-100.pdf", writeToDisk = F)
+
+
+###### Testing Filtering significance ######
+is_filtered <- function(x,keyValue) { #define a classification function to return booleans
+  return (x >= keyValue)
+}
+
+#Pull data from a particular time period, augment a truth value to classify it.
+filter.tbl <- Filtering%>%
+  filter(variable == as_hms(899)) %>% # get values at time: 00:14:99
+  group_by(cond) %>%
+  mutate("50-filtered" = is_filtered(value, 0.5)) %>%
+  summarize(`50-filtered`) %>%
+  matrix %>%
+  table # %>%
+# show
+
+#run a fisher test
+fisher.test((filter.tbl))
+# p-value = 0.0001854 #Significant Omnibus test
+# alternative hypothesis: two.sided
+#try again with chi.sq ## similar but different results.
+chisq.test(table(filter.tbl), correct = T)
+# X-squared = 17.032, df = 2, p-value = 0.0002003
+
+# ## Post hoc comparisons of filtering behaviors at 50% of time.
+# bonferroni corrected alpha is now: 0.05/3 = 0.016666
+#doing this manually cause I can't figure out how to do it otherwise
+matrix(c(8,1,2,11), ncol = 2) %>%
+  fisher.test(.)
+# p-value = 0.001548 - History differs from control in filtering behavior at 50% time
+# alternative hypothesis: true odds ratio is not equal to 1
+# 95 percent confidence interval:     2.58239 2081.94988
+# sample estimates: odds ratio:  33.24984 
+matrix(c(8,10,2,2), ncol = 2) %>%
+  fisher.test(.)
+# p-value = 1 - No difference in filtering behavior for Coverage and Control
+# alternative hypothesis: true odds ratio is not equal to 1
+# 95 percent confidence interval:   0.04824193 13.50821820
+# sample estimates: odds ratio   0.8082103 
+matrix(c(1,10,11,2), ncol = 2) %>%
+  fisher.test(.)
+# p-value = 0.0006442 - Coverage and History filtering behaviors significantly differ.
+# alternative hypothesis: true odds ratio is not equal to 1
+# 95 percent confidence interval:  0.0003945347 0.2989831593
+# sample estimates: odds ratio  0.02418426 
 
 ##### Strategies ####
 df.Strategies %>%
