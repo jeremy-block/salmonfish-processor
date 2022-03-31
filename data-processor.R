@@ -535,7 +535,7 @@ ggplot(data = ., mapping = aes(x=time2, y=value, color= cond)) +
   labs(title = "Filtering Interactions Over Time by Condition",
        x = "Time",
        y = "Percent of Individual's Filtering Behaviors",
-       caption = "2 participants removed from Control group due to 0 filtering behaviors.") +
+       caption = "2 participants excluded from Control group due to 0 filtering behaviors.") +
   guides(
     size = "none",
     alpha = "none"
@@ -553,7 +553,7 @@ ggplot(data = ., mapping = aes(x=time2, y=value, color= cond)) +
     legend.position = c(0.15, 0.85),
     legend.background = element_rect(fill = "white"),
   )
-saveVis("filtering-over-time-100.pdf", writeToDisk = F)
+saveVis("filtering-over-time-100-short.pdf", w=8,h=5, writeToDisk = F)
 
 
 ###### Testing Filtering significance ######
@@ -649,3 +649,4 @@ fisher.test(table(test.strategies))
 chisq.test(table(test.strategies), correct = T)
 #X-squared = 11.281, df = 6, p-value = 0.08006
 #not the same... but also not significant difference between the different strategies.
+
